@@ -350,39 +350,35 @@ class STWave(nn.Module):
 class Adaptive_Embedding(nn.Module):
     def __init__(self, adaptive_embedding_dim, heads, dims):
         '''
-                    XL: [B,T,N,F]
-                    XH: [B,T,N,F]
-                    TE: [B,T,N,F]
-                    return: [B,T,N,F]
+        XL: [B,T,N,F]
+        XH: [B,T,N,F]
+        TE: [B,T,N,F]
+        return: [B,T,N,F]
         '''
         super(Adaptive_Embedding, self).__init__()
         features = heads * dims
         self.adaptive_embedding_dim = adaptive_embedding_dim
-        self.ofc = nn.Linear(features*2+adaptive_embedding_dim,features)
-    def forward(self, xl, xh, te):
+        self.ofc = nn.Linear(features + adaptive_embedding_dim, features)  # 修改为只作用于 xl
 
-        te = te[:,:xl.shape[1],:,:]
+    def forward(self, xl, xh, te):
+        te = te[:, :xl.shape[1], :, :]
         te = te.repeat(1, 1, xl.shape[2], 1)
         features_l = [xl]
         features_h = [xh]
-        # print(f"xl shape: {xl.shape}")
         features_l.append(te)
-        features_h.append(te)
-        # print(f"te shape: {te.shape}")
+
         if self.adaptive_embedding_dim > 0:
-            # 对张量进行初始化，有助于保持信号在网络中方差一致，避免梯度消失
+            # 对张量进行初始化，仅作用于 xl
             adaptive_embedding = nn.init.xavier_uniform_(
-                # Parameter使一个特殊的张量，被设计为可训练参数，会在模型训练时自动更新
-                nn.Parameter(torch.empty(xl.shape[1], xl.shape[2], self.adaptive_embedding_dim))).to(xl.device)
+                nn.Parameter(torch.empty(xl.shape[1], xl.shape[2], self.adaptive_embedding_dim))
+            ).to(xl.device)
             adp_emb = adaptive_embedding.expand(
                 size=(xl.shape[0], *adaptive_embedding.shape)
             ).to(xl.device)
             features_l.append(adp_emb)
-            features_h.append(adp_emb)
-            #print(f"adp shape: {adp_emb.shape}")
+
         xl_cat = torch.cat(features_l, dim=-1).to(xl.device)  # (batch_size, in_steps, num_nodes, model_dim)
-        xh_cat = torch.cat(features_h, dim=-1).to(xl.device)  # (batch_size, in_steps, num_nodes, model_dim)
-        # print(f"xl shape: {xl.shape}")  #
+        xh_cat = torch.cat(features_h, dim=-1).to(xl.device)  # 保持 xh 不受 adaptive_embedding 影响
         emb_result_l = (self.ofc(xl_cat) + xl).to(xl.device)
-        emb_result_h = (self.ofc(xh_cat) + xh).to(xl.device)
+        emb_result_h = xh  # 不对 xh 进行额外处理
         return emb_result_l, emb_result_h
