@@ -37,3 +37,5 @@ Shape of localadj: (170, 7)
 ======================TRAIN MODE======================
 epoch 1, lr 0.001000, loss 87.8660, time 39.9 sec
 average, mae: 31.1745, rmse: 46.5333, mape: 0.2101
+epoch 2, lr 0.001000, loss 48.4461, time 38.8 sec
+average, mae: 23.4065, rmse: 36.9639, mape: 0.1601
