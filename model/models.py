@@ -358,7 +358,8 @@ class Adaptive_Embedding(nn.Module):
         super(Adaptive_Embedding, self).__init__()
         features = heads * dims
         self.adaptive_embedding_dim = adaptive_embedding_dim
-        self.ofc = nn.Linear(features + adaptive_embedding_dim, features)  # 修改为只作用于 xl
+        # 修正 self.ofc 的输入维度
+        self.ofc = nn.Linear(features + adaptive_embedding_dim + features, features)
 
     def forward(self, xl, xh, te):
         te = te[:, :xl.shape[1], :, :]
