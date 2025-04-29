@@ -159,7 +159,7 @@ def construct_weekly_tem_adj(data, num_node, tem_local_adj=True, radius=8):
     return tem_matrices, sorted_indices, avg_tem_matrix, final_sorted_indices
 
 
-def loadGraph(spatial_graph, temporal_graph, temporal_local_graph, dims, data, log):
+def MyloadGraph(spatial_graph, temporal_graph, temporal_local_graph, dims, data, log):
     """
     加载或构建图结构并计算其图小波基。
 
