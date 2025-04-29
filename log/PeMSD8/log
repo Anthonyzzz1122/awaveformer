@@ -30,3 +30,8 @@ Shape of Train Data: (10691, 12, 170, 1)
 Shape of Validation Data: (3548, 12, 170, 1)
 Shape of Test Data: (3548, 12, 170, 1)
 Mean: 229.9842003352646 & Std: 145.60115060481453
+Shape of graphwave eigenvalue and eigenvector: (128,), (170, 128)
+Shape of localadj: (170, 7)
+------------ End -------------
+
+======================TRAIN MODE======================

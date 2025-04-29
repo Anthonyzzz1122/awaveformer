@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils import weight_norm
+from torch.nn.utils.parametrizations import weight_norm
 
 
 class Chomp1d(nn.Module):
@@ -415,7 +415,7 @@ class MyTemporalAttention(nn.Module):
         Mask2: 是否启用改进型掩码
         return: [B, T, N, F]
         """
-        B, T, N, F = x.shape
+        B, T, N, D = x.shape
         # 注入时间编码
         x = x + te
 
