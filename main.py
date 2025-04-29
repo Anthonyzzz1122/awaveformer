@@ -119,7 +119,7 @@ class Solver(object):
 
                     y_hat, y_hat_l = self.model(XL, XH, TE)
 
-                    loss = _compute_loss(Y, y_hat*self.std+self.mean) + _compute_loss(YL, y_hat_l*self.std+self.mean)
+                    loss = _compute_loss(Y, y_hat*self.std+self.mean)*0.85 + _compute_loss(YL, y_hat_l*self.std+self.mean)*1.15
 
                     loss.backward()
                     torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)

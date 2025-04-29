@@ -451,7 +451,7 @@ class MyTemporalAttention(nn.Module):
             attn_heads = attn.view(self.h, B, N, T, T)  # [h, B, N, T, T]
             # 每个头关注不同时间段，但保留其他段一定比例的信息
             segment = T // self.h
-            beta = 0.1  # 跨段信息保留权重
+            beta = 0.3  # 跨段信息保留权重
             for i in range(self.h):
                 head_attn = attn_heads[i]  # [B, N, T, T]
                 start = i * segment
