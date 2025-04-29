@@ -16,7 +16,7 @@ class Chomp1d(nn.Module):
         self.chomp_size = chomp_size
 
     def forward(self, x):
-        return x[:, :, :, :-self.chomp_size].contiguous()
+        return x[..., :-self.chomp_size].contiguous()
     # 移除输入张量x的最后一个维度的多余部分
     # contiguous() 方法确保返回的张量在内存中是连续存储的，便于后续操作。
 
@@ -214,9 +214,10 @@ class TemporalConvNet(nn.Module):
 class Dual_Enconder(nn.Module):
     def __init__(self, heads, dims, samples, localadj, spawave, temwave):
         super(Dual_Enconder, self).__init__()
-        self.temporal_conv = TemporalConvNet(heads * dims)
+        # self.temporal_conv = TemporalConvNet(heads * dims)
         self.temporal_att = MyTemporalAttention(heads, dims)
-        
+        self.temporal_conv = ImprovedTemporalConvNet(heads*dims)
+
         self.spatial_att_l = Sparse_Spatial_Attention(heads, dims, samples, localadj)
         self.spatial_att_h = Sparse_Spatial_Attention(heads, dims, samples, localadj)
         
@@ -407,7 +408,7 @@ class MyTemporalAttention(nn.Module):
         self.ln = nn.LayerNorm(features, elementwise_affine=False)
         self.ff = FeedForward([features, features, features], True)
 
-    def forward(self, x, te, Mask=True, Mask2=False):
+    def forward(self, x, te, Mask=True, Mask2=True):
         """
         x: [B, T, N, F]
         te: [B, T, N, F]
@@ -481,75 +482,75 @@ class MyTemporalAttention(nn.Module):
         out = self.ln(out)
         return self.ff(out)
 
-class TemporalBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, dilation, dropout):
-        super(TemporalBlock, self).__init__()
+# ------------------------------优化-------------------------------   
+class GatedTemporalBlock(nn.Module):
+    """
+    A single residual gated temporal block (WaveNet style) for high-frequency irregularity.
+    Uses two parallel convolutions: filter (tanh) and gate (sigmoid).
+    Input/Output: x: [B*N, C, T]
+    """
+    def __init__(self, channels, kernel_size, dilation, dropout):
+        super().__init__()
         padding = (kernel_size - 1) * dilation
-        # 1st causal conv
-        self.conv1 = weight_norm(
-            nn.Conv2d(in_channels, out_channels, (1, kernel_size),
-                      dilation=(1, dilation), padding=(0, padding))
+        # filter conv
+        self.conv_filter = weight_norm(
+            nn.Conv1d(channels, channels, kernel_size,
+                      dilation=dilation, padding=padding)
         )
-        self.chomp1 = Chomp1d(padding)
-        self.relu1 = nn.ReLU()
-        self.dropout1 = nn.Dropout(dropout)
-        # 2nd causal conv
-        self.conv2 = weight_norm(
-            nn.Conv2d(out_channels, out_channels, (1, kernel_size),
-                      dilation=(1, dilation), padding=(0, padding))
+        # gate conv
+        self.conv_gate = weight_norm(
+            nn.Conv1d(channels, channels, kernel_size,
+                      dilation=dilation, padding=padding)
         )
-        self.chomp2 = Chomp1d(padding)
-        self.relu2 = nn.ReLU()
-        self.dropout2 = nn.Dropout(dropout)
-        # downsample if needed
-        self.downsample = nn.Conv2d(in_channels, out_channels, 1) if in_channels != out_channels else None
+        self.chomp = Chomp1d(padding)
+        self.dropout = nn.Dropout(dropout)
         self.relu = nn.ReLU()
-        self.init_weights()
-
-    def init_weights(self):
-        for m in [self.conv1, self.conv2]:
-            nn.init.kaiming_normal_(m.weight)
-            if m.bias is not None:
-                nn.init.zeros_(m.bias)
-        if self.downsample is not None:
-            nn.init.kaiming_normal_(self.downsample.weight)
-            nn.init.zeros_(self.downsample.bias)
-
+        # residual/skip not changing channels
+    
     def forward(self, x):
-        # x: [B, C, N, T]
-        out = self.conv1(x)
-        out = self.chomp1(out)
-        out = self.relu1(out)
-        out = self.dropout1(out)
+        # x: [B*N, C, T]
+        # filter branch
+        f = self.conv_filter(x)
+        f = self.chomp(f)
+        f = torch.tanh(f)
+        # gate branch
+        g = self.conv_gate(x)
+        g = self.chomp(g)
+        g = torch.sigmoid(g)
+        # gated output
+        out = f * g
+        out = self.dropout(out)
+        # residual connection
+        return self.relu(out + x)
 
-        out = self.conv2(out)
-        out = self.chomp2(out)
-        out = self.relu2(out)
-        out = self.dropout2(out)
-
-        res = x if self.downsample is None else self.downsample(x)
-        return self.relu(out + res)
-
-class TemporalConvNet(nn.Module):
-    def __init__(self, features, kernel_size=2, dropout=0.2, levels=4):
-        super(TemporalConvNet, self).__init__()
+class ImprovedTemporalConvNet(nn.Module):
+    """
+    Stack of gated temporal blocks for high-frequency component.
+    Input: xh [B, T, N, F], output same.
+    """
+    def __init__(self, features, kernel_size=3, dropout=0.2, levels=1):
+        super().__init__()
         layers = []
-        in_channels = features
-        # Build a stack of TemporalBlocks
+        # flatten batch and nodes dims inside forward
         for i in range(levels):
             dilation = 2 ** i
-            out_channels = features
             layers.append(
-                TemporalBlock(in_channels, out_channels, kernel_size, dilation, dropout)
+                GatedTemporalBlock(
+                    channels=features,
+                    kernel_size=kernel_size,
+                    dilation=dilation,
+                    dropout=dropout
+                )
             )
-            in_channels = out_channels
         self.network = nn.Sequential(*layers)
-
+    
     def forward(self, xh):
         # xh: [B, T, N, F]
-        # reshape to [B, F, N, T]
-        out = xh.transpose(1, 3)
-        # apply temporal convolution network
-        out = self.network(out)
-        # back to [B, T, N, F]
-        return out.transpose(1, 3)
+        B, T, N, F = xh.shape
+        # merge B and N dims, permute to [B*N, F, T]
+        x = xh.permute(0,2,3,1).reshape(B*N, F, T)
+        # apply gated temporal convs
+        out = self.network(x)
+        # reshape back
+        out = out.view(B, N, F, T).permute(0,3,1,2).contiguous()
+        return out
