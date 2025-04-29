@@ -3,9 +3,11 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.utils import weight_norm
 
 
 class Chomp1d(nn.Module):
+     # 目的是在一维卷积操作之后移除多余的填充维度
     """
     extra dimension will be added by padding, remove it
     """
@@ -15,11 +17,14 @@ class Chomp1d(nn.Module):
 
     def forward(self, x):
         return x[:, :, :, :-self.chomp_size].contiguous()
+    # 移除输入张量x的最后一个维度的多余部分
+    # contiguous() 方法确保返回的张量在内存中是连续存储的，便于后续操作。
 
 class TemEmbedding(nn.Module):
     def __init__(self, D):
         super(TemEmbedding, self).__init__()
         self.ff_te = FeedForward([295,D,D])
+        # 表示输入维度295输出维度是D
 
     def forward(self, TE, T=288):
         '''
@@ -46,6 +51,7 @@ class FeedForward(nn.Module):
         self.L = len(fea) - 1
         self.linear = nn.ModuleList([nn.Linear(fea[i], fea[i+1]) for i in range(self.L)])
         self.ln = nn.LayerNorm(fea[self.L], elementwise_affine=False)
+        # ln是一个归一化层
 
     def forward(self, inputs):
         x = inputs
@@ -209,7 +215,7 @@ class Dual_Enconder(nn.Module):
     def __init__(self, heads, dims, samples, localadj, spawave, temwave):
         super(Dual_Enconder, self).__init__()
         self.temporal_conv = TemporalConvNet(heads * dims)
-        self.temporal_att = TemporalAttention(heads, dims)
+        self.temporal_att = MyTemporalAttention(heads, dims)
         
         self.spatial_att_l = Sparse_Spatial_Attention(heads, dims, samples, localadj)
         self.spatial_att_h = Sparse_Spatial_Attention(heads, dims, samples, localadj)
@@ -383,3 +389,167 @@ class Adaptive_Embedding(nn.Module):
         emb_result_l = (self.ofc(xl_cat) + xl).to(xl.device)
         emb_result_h = xh  # 不对 xh 进行额外处理
         return emb_result_l, emb_result_h
+# ---------------------------------------------------------------------------
+class MyTemporalAttention(nn.Module):
+    def __init__(self, heads, dims):
+        super(MyTemporalAttention, self).__init__()
+        self.h = heads       # 注意力头数
+        self.d = dims        # 每个头的维度
+        features = heads * dims
+
+        # Q, K, V 和输出 O 的前馈映射
+        self.qfc = FeedForward([features, features])
+        self.kfc = FeedForward([features, features])
+        self.vfc = FeedForward([features, features])
+        self.ofc = FeedForward([features, features])
+
+        # LayerNorm + FFN
+        self.ln = nn.LayerNorm(features, elementwise_affine=False)
+        self.ff = FeedForward([features, features, features], True)
+
+    def forward(self, x, te, Mask=True, Mask2=False):
+        """
+        x: [B, T, N, F]
+        te: [B, T, N, F]
+        Mask: 是否启用因果掩码
+        Mask2: 是否启用改进型掩码
+        return: [B, T, N, F]
+        """
+        B, T, N, F = x.shape
+        # 注入时间编码
+        x = x + te
+
+        # 1) 生成 Q, K, V
+        query = self.qfc(x)  # [B,T,N,features]
+        key   = self.kfc(x)
+        value = self.vfc(x)
+
+        # 2) 拆头：按 feature 维切出 h 份，再在 batch 维 concat
+        q = torch.cat(query.split(self.d, dim=-1), dim=0)  # [h*B, T, N, d]
+        k = torch.cat(key.split(self.d,   dim=-1), dim=0)
+        v = torch.cat(value.split(self.d, dim=-1), dim=0)
+
+        # 3) 调整维度以便做注意力
+        q = q.permute(0, 2, 1, 3)  # [h*B, N, T, d]
+        k = k.permute(0, 2, 3, 1)  # [h*B, N, d, T]
+        v = v.permute(0, 2, 1, 3)  # [h*B, N, T, d]
+
+        # 4) 计算打分并缩放
+        attn = torch.matmul(q, k) / math.sqrt(self.d)  # [h*B, N, T, T]
+
+        # 5) 因果掩码（Mask1）
+        if Mask:
+            causal = torch.tril(torch.ones(T, T, device=x.device, dtype=torch.bool))
+            mask1 = causal.unsqueeze(0).unsqueeze(0)        # [1,1,T,T]
+            mask1 = mask1.expand(self.h * B, N, T, T)      # [h*B, N, T, T]
+            attn = attn.masked_fill(~mask1, float('-inf'))
+
+        # 6) 改进型掩码（Mask2）：头特定时段为主，也关注其他时间段
+        if Mask2:
+            # reshape 回头维度
+            attn_heads = attn.view(self.h, B, N, T, T)  # [h, B, N, T, T]
+            # 每个头关注不同时间段，但保留其他段一定比例的信息
+            segment = T // self.h
+            beta = 0.1  # 跨段信息保留权重
+            for i in range(self.h):
+                head_attn = attn_heads[i]  # [B, N, T, T]
+                start = i * segment
+                end = (i + 1) * segment if i < self.h - 1 else T
+                # 布尔掩码：True 表示本头重点段
+                focus_mask = torch.zeros((T, T), device=x.device, dtype=torch.bool)
+                focus_mask[:, start:end] = True
+                focus_mask = focus_mask.unsqueeze(0).unsqueeze(0).expand(B, N, T, T)
+                # 在重点段保持原值，在其他段乘以 beta
+                head_attn = torch.where(focus_mask,
+                                        head_attn,
+                                        head_attn * beta)
+                attn_heads[i] = head_attn
+            # flatten 回原 shape
+            attn = attn_heads.view(self.h * B, N, T, T)
+
+        # 7) Softmax
+        attn = F.softmax(attn, dim=-1)
+
+        # 8) 加权求和值并合并头
+        out = torch.matmul(attn, v)                     # [h*B, N, T, d]
+        out = out.permute(0, 2, 1, 3).contiguous()       # [h*B, T, N, d]
+        out = torch.cat(out.split(B, dim=0), dim=-1)     # [B, T, N, h*d]
+
+        # 9) 输出映射 + 残差 + LayerNorm + FFN
+        out = self.ofc(out)
+        out = out + x
+        out = self.ln(out)
+        return self.ff(out)
+
+class TemporalBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, dilation, dropout):
+        super(TemporalBlock, self).__init__()
+        padding = (kernel_size - 1) * dilation
+        # 1st causal conv
+        self.conv1 = weight_norm(
+            nn.Conv2d(in_channels, out_channels, (1, kernel_size),
+                      dilation=(1, dilation), padding=(0, padding))
+        )
+        self.chomp1 = Chomp1d(padding)
+        self.relu1 = nn.ReLU()
+        self.dropout1 = nn.Dropout(dropout)
+        # 2nd causal conv
+        self.conv2 = weight_norm(
+            nn.Conv2d(out_channels, out_channels, (1, kernel_size),
+                      dilation=(1, dilation), padding=(0, padding))
+        )
+        self.chomp2 = Chomp1d(padding)
+        self.relu2 = nn.ReLU()
+        self.dropout2 = nn.Dropout(dropout)
+        # downsample if needed
+        self.downsample = nn.Conv2d(in_channels, out_channels, 1) if in_channels != out_channels else None
+        self.relu = nn.ReLU()
+        self.init_weights()
+
+    def init_weights(self):
+        for m in [self.conv1, self.conv2]:
+            nn.init.kaiming_normal_(m.weight)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+        if self.downsample is not None:
+            nn.init.kaiming_normal_(self.downsample.weight)
+            nn.init.zeros_(self.downsample.bias)
+
+    def forward(self, x):
+        # x: [B, C, N, T]
+        out = self.conv1(x)
+        out = self.chomp1(out)
+        out = self.relu1(out)
+        out = self.dropout1(out)
+
+        out = self.conv2(out)
+        out = self.chomp2(out)
+        out = self.relu2(out)
+        out = self.dropout2(out)
+
+        res = x if self.downsample is None else self.downsample(x)
+        return self.relu(out + res)
+
+class TemporalConvNet(nn.Module):
+    def __init__(self, features, kernel_size=2, dropout=0.2, levels=4):
+        super(TemporalConvNet, self).__init__()
+        layers = []
+        in_channels = features
+        # Build a stack of TemporalBlocks
+        for i in range(levels):
+            dilation = 2 ** i
+            out_channels = features
+            layers.append(
+                TemporalBlock(in_channels, out_channels, kernel_size, dilation, dropout)
+            )
+            in_channels = out_channels
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, xh):
+        # xh: [B, T, N, F]
+        # reshape to [B, F, N, T]
+        out = xh.transpose(1, 3)
+        # apply temporal convolution network
+        out = self.network(out)
+        # back to [B, T, N, F]
+        return out.transpose(1, 3)
