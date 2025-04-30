@@ -1,0 +1,62 @@
+------------ Options -------------
+config: config/PeMSD8.conf
+cuda: 0
+seed: 1
+batch_size: 192
+max_epoch: 200
+learning_rate: 0.001
+input_len: 12
+output_len: 12
+train_ratio: 0.6
+val_ratio: 0.2
+test_ratio: 0.2
+dims: 16
+heads: 8
+layers: 2
+wave: coif1
+level: 1
+samples: 1.0
+adaptive_embedding_dim: 64
+traffic_file: ./data/PeMSD8/PEMS08.npz
+adj_file: ./data/PeMSD8/adj.npy
+tem_adj_file: ./data/PeMSD8/temadj.npy
+tem_adj_change_file: ./data/PeMSD8/temadj_change.npy
+tem_local_file: ./data/PeMSD8/temlocal.npy
+model_file: ./cpt/PeMSD8/saved_model-v4-Improvedtem_local
+log_file: ./log/PeMSD8/log-v4-Imporvedtem_local
+-------------- End ----------------
+
+------------ Loading Data -------------
+Shape of data: (17856, 170, 1)
+Shape of Train Data: (10691, 12, 170, 1)
+Shape of Validation Data: (3548, 12, 170, 1)
+Shape of Test Data: (3548, 12, 170, 1)
+Mean: 229.9842003352646 & Std: 145.60115060481453
+Shape of spatial wave eigen: (128,), (170, 128)
+Shape of temporal wave eigen: (128,), (170, 128)
+Shape of local adjacency: (170, 14)
+------------ End -------------
+
+======================TRAIN MODE======================
+epoch 1, lr 0.001000, loss 96.8647, time 38.2 sec
+average, mae: 28.5137, rmse: 43.9599, mape: 0.1869
+epoch 2, lr 0.001000, loss 51.0545, time 37.7 sec
+average, mae: 25.4822, rmse: 39.1151, mape: 0.1604
+epoch 3, lr 0.001000, loss 46.3122, time 37.9 sec
+average, mae: 24.4477, rmse: 37.5588, mape: 0.1547
+epoch 4, lr 0.001000, loss 44.0912, time 37.7 sec
+average, mae: 23.0207, rmse: 35.6346, mape: 0.1581
+epoch 5, lr 0.001000, loss 44.8648, time 38.5 sec
+average, mae: 22.0228, rmse: 34.2714, mape: 0.1602
+epoch 6, lr 0.001000, loss 40.8467, time 38.8 sec
+average, mae: 20.9083, rmse: 32.7021, mape: 0.1677
+epoch 7, lr 0.001000, loss 39.6212, time 39.0 sec
+average, mae: 20.3494, rmse: 32.1406, mape: 0.1454
+epoch 8, lr 0.001000, loss 39.2865, time 38.9 sec
+average, mae: 21.3374, rmse: 32.4276, mape: 0.2006
+epoch 9, lr 0.001000, loss 38.4802, time 38.3 sec
+average, mae: 19.8113, rmse: 31.5271, mape: 0.1302
+epoch 10, lr 0.001000, loss 36.9918, time 38.5 sec
+average, mae: 19.0180, rmse: 30.5844, mape: 0.1276
+epoch 11, lr 0.001000, loss 36.2408, time 38.5 sec
+average, mae: 18.8610, rmse: 30.3076, mape: 0.1296
