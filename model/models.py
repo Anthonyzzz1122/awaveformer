@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn.utils.parametrizations import weight_norm
+from torch.nn.utils import weight_norm
 
 
 class Chomp1d(nn.Module):
@@ -19,6 +19,7 @@ class Chomp1d(nn.Module):
         return x[..., :-self.chomp_size].contiguous()
     # 移除输入张量x的最后一个维度的多余部分
     # contiguous() 方法确保返回的张量在内存中是连续存储的，便于后续操作。
+
 
 class TemEmbedding(nn.Module):
     def __init__(self, D):
@@ -307,19 +308,24 @@ class Adaptive_Fusion(nn.Module):
         return self.ff(value)
     
 class STWave(nn.Module):
+    # def __init__(self, heads,
+    #             dims, layers, samples,
+    #             localadj,spawave, temwave,
+    #             input_len, output_len,
+    #             adaptive_embedding_dim):
     def __init__(self, heads,
                 dims, layers, samples,
-                localadj, spawave, temwave,
+                localadj,spawave, temwave,
                 input_len, output_len,
                 adaptive_embedding_dim):
         
         super(STWave, self).__init__()
         features = heads * dims
         I = torch.arange(localadj.shape[0]).unsqueeze(-1)
-        localadj = torch.cat([I, torch.from_numpy(localadj)], -1)
+        localadj_full = torch.cat([I, torch.from_numpy(localadj)], -1)
         self.input_len = input_len
 
-        self.dual_enc = nn.ModuleList([Dual_Enconder(heads, dims, samples, localadj, spawave, temwave) for i in range(layers)])
+        self.dual_enc = nn.ModuleList([Dual_Enconder(heads, dims, samples, localadj_full, spawave, temwave) for i in range(layers)])
         self.adp_f = Adaptive_Fusion(heads, dims)
         
         self.pre_l = nn.Conv2d(input_len, output_len, (1,1))
@@ -342,7 +348,7 @@ class STWave(nn.Module):
         '''
         xl, xh = self.start_emb_l(XL), self.start_emb_h(XH)
         te = self.te_emb(TE)
-        xl, xh = self.apt_emb(xl, xh, te)
+        # xl, xh = self.apt_emb(xl, xh, te)
         for enc in self.dual_enc:
             xl, xh = enc(xl, xh, te[:,:self.input_len,:,:])
         

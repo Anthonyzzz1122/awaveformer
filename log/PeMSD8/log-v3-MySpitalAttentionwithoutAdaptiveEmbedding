@@ -1,0 +1,53 @@
+------------ Options -------------
+config: config/PeMSD8.conf
+cuda: 0
+seed: 1
+batch_size: 128
+max_epoch: 256
+learning_rate: 0.001
+input_len: 12
+output_len: 12
+train_ratio: 0.6
+val_ratio: 0.2
+test_ratio: 0.2
+dims: 16
+heads: 8
+layers: 2
+wave: coif1
+level: 1
+samples: 1.0
+adaptive_embedding_dim: 64
+traffic_file: ./data/PeMSD8/PEMS08.npz
+adj_file: ./data/PeMSD8/adj.npy
+tem_adj_file: ./data/PeMSD8/temadj.npy
+model_file: ./cpt/PeMSD8/saved_model-v3-MyTemporalAttentionwithoutAdaptiveEmbedding
+log_file: ./log/PeMSD8/log-v3-MySpitalAttentionwithoutAdaptiveEmbedding
+-------------- End ----------------
+
+------------ Loading Data -------------
+Shape of data: (17856, 170, 1)
+Shape of Train Data: (10691, 12, 170, 1)
+Shape of Validation Data: (3548, 12, 170, 1)
+Shape of Test Data: (3548, 12, 170, 1)
+Mean: 229.9842003352646 & Std: 145.60115060481453
+Shape of graphwave eigenvalue and eigenvector: (128,), (170, 128)
+Shape of localadj: (170, 7)
+------------ End -------------
+
+======================TRAIN MODE======================
+epoch 1, lr 0.001000, loss 90.3102, time 38.0 sec
+average, mae: 28.2878, rmse: 43.9387, mape: 0.2313
+epoch 2, lr 0.001000, loss 50.0277, time 37.6 sec
+average, mae: 24.9604, rmse: 38.4656, mape: 0.1796
+epoch 3, lr 0.001000, loss 45.9771, time 37.5 sec
+average, mae: 22.5350, rmse: 35.8355, mape: 0.1482
+epoch 4, lr 0.001000, loss 43.3010, time 37.5 sec
+average, mae: 21.7123, rmse: 34.0343, mape: 0.1683
+epoch 5, lr 0.001000, loss 40.9659, time 37.4 sec
+average, mae: 20.7239, rmse: 32.8179, mape: 0.1353
+epoch 6, lr 0.001000, loss 38.7869, time 37.5 sec
+average, mae: 20.1568, rmse: 31.9265, mape: 0.1355
+epoch 7, lr 0.001000, loss 37.2823, time 37.3 sec
+average, mae: 20.2788, rmse: 31.6964, mape: 0.1356
+epoch 8, lr 0.001000, loss 37.3093, time 37.4 sec
+average, mae: 18.9211, rmse: 30.3540, mape: 0.1471
