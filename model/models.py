@@ -87,7 +87,7 @@ class Sparse_Spatial_Attention(nn.Module):
         mask2_head = torch.zeros((self.h, N, N), dtype=torch.float32)
         for i in range(self.h):
             # 计算当前头需要保留的强相关节点数量 topK_i（按相关性排序取前 topK_i 个）
-            topK_i = int(N * (i + 1) / self.h)            # 随着 i 增大，topK_i 增加
+            topK_i = int(N * (i + 4) / self.h)            # 随着 i 增大，topK_i 增加
             if topK_i < 1:
                 topK_i = 1
             if topK_i > N:
@@ -278,10 +278,8 @@ class Dual_Enconder(nn.Module):
         self.temporal_att = MyTemporalAttention(heads, dims)
         self.temporal_conv = ImprovedTemporalConvNet(heads*dims)
 
-        # self.spatial_att_l = Sparse_Spatial_Attention(heads, dims, samples, localadj,avg_tem_matrix, final_sorted_indices)
-        # self.spatial_att_h = Sparse_Spatial_Attention(heads, dims, samples, localadj,avg_tem_matrix, final_sorted_indices)
-        self.spatial_att_l = ImprovedSparse_Spatial_Attention(heads, dims, samples, localadj,avg_tem_matrix, final_sorted_indices)
-        self.spatial_att_h = ImprovedSparse_Spatial_Attention(heads, dims, samples, localadj,avg_tem_matrix, final_sorted_indices)
+        self.spatial_att_l = Sparse_Spatial_Attention(heads, dims, samples, localadj,avg_tem_matrix, final_sorted_indices)
+        self.spatial_att_h = Sparse_Spatial_Attention(heads, dims, samples, localadj,avg_tem_matrix, final_sorted_indices)
         
         spa_eigvalue = torch.from_numpy(spawave[0].astype(np.float32))
         self.spa_eigvalue = nn.Parameter(spa_eigvalue, requires_grad=True)        
@@ -301,10 +299,9 @@ class Dual_Enconder(nn.Module):
         xl = self.temporal_att(xl, te) # [B,T,N,F]
         xh = self.temporal_conv(xh) # [B,T,N,F]
         
-        # spa_statesl = self.spatial_att_l(xl, self.spa_eigvalue, self.spa_eigvec.to(xl.device), self.tem_eigvalue, self.tem_eigvec.to(xl.device),True,False) # [B,T,N,F]
-        # spa_statesh = self.spatial_att_h(xh, self.spa_eigvalue, self.spa_eigvec.to(xl.device), self.tem_eigvalue, self.tem_eigvec.to(xl.device),False,True) # [B,T,N,F]
         spa_statesl = self.spatial_att_l(xl, self.spa_eigvalue, self.spa_eigvec.to(xl.device), self.tem_eigvalue, self.tem_eigvec.to(xl.device),False,True) # [B,T,N,F]
-        spa_statesh = self.spatial_att_h(xh, self.spa_eigvalue, self.spa_eigvec.to(xl.device), self.tem_eigvalue, self.tem_eigvec.to(xl.device),True,False) # [B,T,N,F]
+        spa_statesh = self.spatial_att_h(xh, self.spa_eigvalue, self.spa_eigvec.to(xl.device), self.tem_eigvalue, self.tem_eigvec.to(xl.device),False,True) # [B,T,N,F]
+        
         
         xl = spa_statesl + xl
         xh = spa_statesh + xh
@@ -739,120 +736,3 @@ class Sparse_Spatial_AttentionCOPY(nn.Module):
         value = self.ln(value)
 
         return self.ff(value)
-# ---------------------------------------------------------------------------
-class ImprovedSparse_Spatial_Attention(nn.Module):
-    def __init__(
-        self, heads, dims, samples,
-        localadj, mask1, mask2,
-        use_mask1=True, use_mask2=True
-    ):
-        super().__init__()
-        features = heads * dims
-        self.h = heads
-        self.d = dims
-        self.s = samples
-        self.use_mask1, self.use_mask2 = use_mask1, use_mask2
-
-        # --- 局部邻接与投影 ---
-        # localadj: [N, L]
-        self.la = torch.as_tensor(localadj, dtype=torch.long)
-        self.proj = nn.Linear(self.la.shape[1], 1)  # L->1
-
-        # --- mask1 可学习参数 ---
-        # mask1: [N,N]
-        mask1_tensor = torch.tensor(mask1, dtype=torch.float32)
-        mask1_tensor.fill_diagonal_(1.0)
-        self.register_buffer('mask1_base', mask1_tensor)
-        self.mask1_temp = nn.Parameter(torch.tensor(1.0))
-        self.mask1_bias = nn.Parameter(torch.tensor(0.0))
-
-        # --- mask2 可学习参数 ---
-        # mask2: final_sorted_indices [N,N]
-        mask2_int = torch.tensor(mask2, dtype=torch.long)
-        N = mask2_int.size(0)
-        mask2_norm = mask2_int.float() / float(N - 1)
-        self.register_buffer('mask2_norm', mask2_norm)
-        self.mask2_threshold = nn.Parameter(torch.tensor(0.5))
-        self.mask2_temp      = nn.Parameter(torch.tensor(1.0))
-        self.mask2_floor     = nn.Parameter(torch.tensor(0.1))
-
-        # --- Q/K/V 及输出 ---
-        self.qfc = nn.Linear(features, features)
-        self.kfc = nn.Linear(features, features)
-        self.vfc = nn.Linear(features, features)
-        self.ofc = nn.Linear(features, features)
-        self.ln  = nn.LayerNorm(features)
-        self.ff  = nn.Linear(features, features)
-
-    def forward(
-        self, x,
-        spa_eigvalue, spa_eigvec,
-        tem_eigvalue, tem_eigvec,
-        IsMask1=True, IsMask2=True
-    ):
-        B, T, N, D = x.shape
-        # 注入时空编码
-        x_ = (
-            x
-            + torch.matmul(spa_eigvec, torch.diag_embed(spa_eigvalue))
-            + torch.matmul(tem_eigvec, torch.diag_embed(tem_eigvalue))
-        )
-        # Q/K/V
-        Q = self.qfc(x_); K = self.kfc(x_); V = self.vfc(x_)
-        # 拆头
-        Q = torch.cat(torch.split(Q, self.d, -1), 0)
-        K = torch.cat(torch.split(K, self.d, -1), 0)
-        V = torch.cat(torch.split(V, self.d, -1), 0)
-        BH, T, N, d = K.shape
-        B_eff = BH // self.h
-
-        # --- 局部注意力阶段 ---
-        K_exp = K.unsqueeze(-3).expand(BH, T, N, N, d)
-        K_loc = K_exp[:, :, torch.arange(N).unsqueeze(1), self.la, :]
-        scores_loc = torch.matmul(
-            Q.unsqueeze(-2), K_loc.transpose(-2, -1)
-        ).squeeze(-2)  # [BH,T,N,L]
-        M = self.proj(scores_loc).squeeze(-1)  # [BH,T,N]
-        topk = int(self.s * math.log(N, 2))
-        topk = max(1, min(N, topk))
-        M_top = M.topk(topk, dim=-1, sorted=False)[1]  # [BH,T,topk]
-
-        # --- 全局注意力阶段 ---
-        idx_b = torch.arange(BH, device=x.device)[:, None, None]
-        idx_t = torch.arange(T,  device=x.device)[None, :, None]
-        Q_sel = Q[idx_b, idx_t, M_top, :]  # [BH,T,topk,d]
-        G = torch.matmul(Q_sel, K.transpose(-2, -1)) / math.sqrt(d)  # [BH,T,topk,N]
-
-        # --- mask1 软阈值 ---
-        if self.use_mask1 and IsMask1:
-            m1 = self.mask1_base.pow(self.mask1_temp) + self.mask1_bias
-            m1 = m1.unsqueeze(0).unsqueeze(0).expand(BH, T, N, N)
-            flat = M_top.reshape(-1)
-            mask1_vals = m1.reshape(-1, N)[flat].reshape(BH, T, topk, N)
-            G = G * mask1_vals
-
-        # --- mask2 软阈值 ---
-        if self.use_mask2 and IsMask2:
-            flat = M_top.reshape(-1)
-            m2_base = self.mask2_norm.reshape(-1, N)[flat]
-            thr = self.mask2_threshold
-            tmp = self.mask2_temp
-            floor = self.mask2_floor.clamp(0, 1)
-            m2_sig = torch.sigmoid((m2_base - thr) * tmp)
-            m2 = floor + (1 - floor) * m2_sig
-            mask2_vals = m2.reshape(BH, T, topk, N)
-            G = G * mask2_vals
-
-        # --- 注意力加权与输出 ---
-        attn = F.softmax(G, dim=-1)
-        vals = torch.matmul(attn, V)  # [BH,T,topk,d]
-        cp = attn.argmax(dim=-2, keepdim=True).transpose(-2, -1)
-        vals = vals.unsqueeze(-3).expand(BH, T, N, topk, d)[
-            torch.arange(BH)[:, None, None, None],
-            torch.arange(T)[None, :, None, None],
-            torch.arange(N)[None, None, :, None],
-            cp, :
-        ].squeeze(-2)  # [BH,T,N,d]
-        out = torch.cat(torch.split(vals, B_eff, dim=0), -1)
-        out = self.ofc(out); out = self.ln(out)
-        return self.ff(out)
