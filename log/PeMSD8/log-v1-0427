@@ -432,7 +432,7 @@ epoch 198, lr 0.000100, loss 24.6495, time 38.3 sec
 average, mae: 13.6202, rmse: 24.3250, mape: 0.0993
 epoch 199, lr 0.000100, loss 24.6350, time 38.3 sec
 average, mae: 13.6275, rmse: 24.3478, mape: 0.1004
-epoch 200, lr 0.000100, loss 24.6289, time 38.2 sec
+epoch 200, lr 0.000100, loss 24.6289, time 38.2 sec 
 average, mae: 13.6550, rmse: 24.4085, mape: 0.1009
 Best epoch is: 198
 ======================TEST MODE======================
