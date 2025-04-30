@@ -74,8 +74,9 @@ class Sparse_Spatial_Attention(nn.Module):
         self.s = samples
 
         # 将局部邻接矩阵保存为 tensor（用于局部注意力阶段）
-        self.la = torch.tensor(localadj, dtype=torch.long)  # 局部邻接表，每个节点的近邻索引列表
-
+        self.la = torch.as_tensor(localadj, dtype=torch.long)  # 局部邻接表，每个节点的近邻索引列表
+        # 用于局部注意力得分投影：把 L 维降成 1
+        self.proj = nn.Linear(self.la.shape[1], 1)
         # 将 mask1 和 mask2 保存为 tensor，并对 mask2 做归一化
         mask1_tensor = torch.tensor(mask1, dtype=torch.float32)
         mask2_int = torch.tensor(mask2, dtype=torch.long)  # mask2 原始整数排名矩阵
@@ -142,7 +143,7 @@ class Sparse_Spatial_Attention(nn.Module):
         Q_K_sample = torch.matmul(Q.unsqueeze(-2), K_sample.transpose(-2, -1)).squeeze(-2)  # [BH, T, N, L]
 
         # 将每个节点对其邻居的注意力得分经过线性层投影，得到每个节点的“全局相关性”分数 M
-        M = self.ofc(Q_K_sample).squeeze(-1)  # [BH, T, N]，每个节点对应一个分数
+        M = self.proj(Q_K_sample).squeeze(-1)  # [BH, T, N]，每个节点对应一个分数
         # 从每个时间步中选取得分最高的若干节点（全局注意力的 Query 节点集合）
         Sampled_Nodes = int(self.s * math.log(N, 2))
         M_top = M.topk(Sampled_Nodes, dim=-1, sorted=False)[1]  # [BH, T, Sampled_Nodes] 注意力得分最高的节点索引
@@ -277,8 +278,8 @@ class Dual_Enconder(nn.Module):
         self.temporal_att = MyTemporalAttention(heads, dims)
         self.temporal_conv = ImprovedTemporalConvNet(heads*dims)
 
-        self.spatial_att_l = Sparse_Spatial_Attention(heads, dims, samples, localadj,avg_tem_matrix, final_sorted_indices,True,False)
-        self.spatial_att_h = Sparse_Spatial_Attention(heads, dims, samples, localadj,avg_tem_matrix, final_sorted_indices,False,True)
+        self.spatial_att_l = Sparse_Spatial_Attention(heads, dims, samples, localadj,avg_tem_matrix, final_sorted_indices)
+        self.spatial_att_h = Sparse_Spatial_Attention(heads, dims, samples, localadj,avg_tem_matrix, final_sorted_indices)
         
         spa_eigvalue = torch.from_numpy(spawave[0].astype(np.float32))
         self.spa_eigvalue = nn.Parameter(spa_eigvalue, requires_grad=True)        
