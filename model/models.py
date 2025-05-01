@@ -299,8 +299,8 @@ class Dual_Enconder(nn.Module):
         xl = self.temporal_att(xl, te) # [B,T,N,F]
         xh = self.temporal_conv(xh) # [B,T,N,F]
         
-        spa_statesl = self.spatial_att_l(xl, self.spa_eigvalue, self.spa_eigvec.to(xl.device), self.tem_eigvalue, self.tem_eigvec.to(xl.device),True,False) # [B,T,N,F]
-        spa_statesh = self.spatial_att_h(xh, self.spa_eigvalue, self.spa_eigvec.to(xl.device), self.tem_eigvalue, self.tem_eigvec.to(xl.device),False,True) # [B,T,N,F]
+        spa_statesl = self.spatial_att_l(xl, self.spa_eigvalue, self.spa_eigvec.to(xl.device), self.tem_eigvalue, self.tem_eigvec.to(xl.device),False,False) # [B,T,N,F]
+        spa_statesh = self.spatial_att_h(xh, self.spa_eigvalue, self.spa_eigvec.to(xl.device), self.tem_eigvalue, self.tem_eigvec.to(xl.device),False,False) # [B,T,N,F]
         xl = spa_statesl + xl
         xh = spa_statesh + xh
         
