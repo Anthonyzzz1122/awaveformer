@@ -1,0 +1,128 @@
+------------ Options -------------
+config: config/PeMSD4.conf
+cuda: 0
+seed: 1
+batch_size: 128
+max_epoch: 200
+learning_rate: 0.001
+input_len: 12
+output_len: 12
+train_ratio: 0.6
+val_ratio: 0.2
+test_ratio: 0.2
+dims: 16
+heads: 8
+layers: 2
+wave: db1
+level: 1
+samples: 1.0
+adaptive_embedding_dim: 64
+traffic_file: ./data/PeMSD4/PEMS04.npz
+adj_file: ./data/PeMSD4/adj.npy
+tem_adj_file: ./data/PeMSD4/temadj.npy
+tem_adj_change_file: ./data/PeMSD4/temadj_change.npy
+tem_local_file: ./data/PeMSD4/temlocal.npy
+model_file: ./cpt/PeMSD4/saved_model
+log_file: ./log/PeMSD4/log
+-------------- End ----------------
+
+------------ Loading Data -------------
+Shape of data: (16992, 307, 1)
+Shape of Train Data: (10172, 12, 307, 1)
+Shape of Validation Data: (3376, 12, 307, 1)
+Shape of Test Data: (3375, 12, 307, 1)
+Mean: 207.14156436010714 & Std: 156.46075221136476
+Shape of spatial wave eigen: (128,), (307, 128)
+Shape of temporal wave eigen: (128,), (307, 128)
+Shape of local adjacency: (307, 16)
+------------ End -------------
+
+======================TRAIN MODE======================
+epoch 1, lr 0.001000, loss 94.5494, time 62.7 sec
+average, mae: 37.1475, rmse: 56.9116, mape: 0.2404
+epoch 2, lr 0.001000, loss 63.2702, time 62.3 sec
+average, mae: 30.0690, rmse: 46.5047, mape: 0.2049
+epoch 3, lr 0.001000, loss 52.8706, time 62.4 sec
+average, mae: 28.9497, rmse: 44.2456, mape: 0.2016
+epoch 4, lr 0.001000, loss 49.5300, time 62.4 sec
+average, mae: 26.7691, rmse: 41.6159, mape: 0.1824
+epoch 5, lr 0.001000, loss 47.4619, time 62.3 sec
+average, mae: 25.6137, rmse: 40.0020, mape: 0.1727
+epoch 6, lr 0.001000, loss 45.5447, time 62.3 sec
+average, mae: 25.2708, rmse: 39.4207, mape: 0.1675
+epoch 7, lr 0.001000, loss 44.9870, time 62.3 sec
+average, mae: 26.0452, rmse: 39.6287, mape: 0.1931
+epoch 8, lr 0.001000, loss 44.1017, time 62.3 sec
+average, mae: 24.9328, rmse: 38.4256, mape: 0.2125
+epoch 9, lr 0.001000, loss 43.5468, time 62.2 sec
+average, mae: 24.3311, rmse: 38.2370, mape: 0.1630
+epoch 10, lr 0.001000, loss 43.5321, time 62.4 sec
+average, mae: 24.0146, rmse: 37.7917, mape: 0.1791
+epoch 11, lr 0.001000, loss 42.7109, time 62.2 sec
+average, mae: 24.1387, rmse: 37.9909, mape: 0.1664
+epoch 12, lr 0.001000, loss 42.6480, time 62.3 sec
+average, mae: 24.0289, rmse: 37.7628, mape: 0.1601
+epoch 13, lr 0.001000, loss 42.1990, time 62.2 sec
+average, mae: 24.1652, rmse: 38.0125, mape: 0.1847
+epoch 14, lr 0.001000, loss 42.0969, time 62.4 sec
+average, mae: 25.2766, rmse: 39.4867, mape: 0.1692
+epoch 15, lr 0.001000, loss 41.8627, time 62.3 sec
+average, mae: 24.0521, rmse: 37.9207, mape: 0.1592
+epoch 16, lr 0.001000, loss 42.1443, time 62.6 sec
+average, mae: 24.0360, rmse: 37.9716, mape: 0.1707
+epoch 17, lr 0.001000, loss 42.1446, time 62.4 sec
+average, mae: 23.8572, rmse: 37.7581, mape: 0.1654
+epoch 18, lr 0.001000, loss 41.5778, time 62.3 sec
+average, mae: 23.6984, rmse: 37.4365, mape: 0.1563
+epoch 19, lr 0.001000, loss 41.1833, time 62.3 sec
+average, mae: 23.5048, rmse: 37.2297, mape: 0.1552
+epoch 20, lr 0.001000, loss 41.1513, time 62.1 sec
+average, mae: 23.2902, rmse: 37.1051, mape: 0.1545
+epoch 21, lr 0.001000, loss 41.1196, time 62.1 sec
+average, mae: 23.8311, rmse: 37.4929, mape: 0.1893
+epoch 22, lr 0.001000, loss 41.0848, time 62.1 sec
+average, mae: 23.6588, rmse: 37.5366, mape: 0.1565
+epoch 23, lr 0.001000, loss 40.9648, time 62.2 sec
+average, mae: 23.5256, rmse: 37.2769, mape: 0.1538
+epoch 24, lr 0.001000, loss 40.8304, time 62.1 sec
+average, mae: 23.5484, rmse: 37.3533, mape: 0.1536
+epoch 25, lr 0.001000, loss 40.8242, time 62.2 sec
+average, mae: 23.2626, rmse: 36.9689, mape: 0.1534
+epoch 26, lr 0.001000, loss 40.6781, time 62.2 sec
+average, mae: 23.1649, rmse: 36.9560, mape: 0.1592
+epoch 27, lr 0.001000, loss 40.5551, time 62.2 sec
+average, mae: 23.2142, rmse: 37.0262, mape: 0.1617
+epoch 28, lr 0.001000, loss 40.4287, time 62.3 sec
+average, mae: 23.0257, rmse: 36.7885, mape: 0.1648
+epoch 29, lr 0.001000, loss 40.3162, time 62.5 sec
+average, mae: 23.0626, rmse: 36.8042, mape: 0.1636
+epoch 30, lr 0.001000, loss 40.4294, time 62.6 sec
+average, mae: 23.4886, rmse: 37.4122, mape: 0.1570
+epoch 31, lr 0.001000, loss 40.6221, time 62.5 sec
+average, mae: 23.0267, rmse: 36.7665, mape: 0.1637
+epoch 32, lr 0.001000, loss 40.3353, time 62.5 sec
+average, mae: 22.9719, rmse: 36.7846, mape: 0.1539
+epoch 33, lr 0.001000, loss 40.2222, time 62.6 sec
+average, mae: 23.2685, rmse: 37.0556, mape: 0.1523
+epoch 34, lr 0.001000, loss 40.1688, time 62.5 sec
+average, mae: 23.0063, rmse: 36.7594, mape: 0.1521
+epoch 35, lr 0.001000, loss 40.1745, time 62.3 sec
+average, mae: 22.8295, rmse: 36.6623, mape: 0.1564
+epoch 36, lr 0.001000, loss 40.3592, time 62.6 sec
+average, mae: 23.0645, rmse: 36.7841, mape: 0.1526
+epoch 37, lr 0.001000, loss 40.0446, time 62.6 sec
+average, mae: 22.9856, rmse: 36.8032, mape: 0.1523
+epoch 38, lr 0.001000, loss 40.0084, time 62.5 sec
+average, mae: 23.0576, rmse: 36.7669, mape: 0.1509
+epoch 39, lr 0.001000, loss 40.0802, time 62.6 sec
+average, mae: 22.8257, rmse: 36.5801, mape: 0.1534
+epoch 40, lr 0.001000, loss 39.8234, time 62.8 sec
+average, mae: 22.8408, rmse: 36.6254, mape: 0.1533
+epoch 41, lr 0.001000, loss 39.9372, time 62.4 sec
+average, mae: 23.5088, rmse: 37.2813, mape: 0.1529
+epoch 42, lr 0.001000, loss 40.2070, time 62.3 sec
+average, mae: 22.8888, rmse: 36.5558, mape: 0.1590
+epoch 43, lr 0.001000, loss 39.6800, time 62.4 sec
+average, mae: 22.8449, rmse: 36.5501, mape: 0.1589
+epoch 44, lr 0.001000, loss 39.7188, time 62.3 sec
+average, mae: 22.8482, rmse: 36.5713, mape: 0.1653
