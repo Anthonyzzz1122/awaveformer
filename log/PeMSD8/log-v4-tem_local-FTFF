@@ -490,4 +490,4 @@ epoch 225, lr 0.000002, loss 23.5177, time 37.0 sec
 average, mae: 13.4778, rmse: 24.0046, mape: 0.1003
 Best epoch is: 218
 ======================TEST MODE======================
-average, mae: 13.4558, rmse: 23.5112, mape: 0.0895
+average, mae: 13.4258, rmse: 23.5112, mape: 0.0895
