@@ -421,23 +421,23 @@ average, mae: 19.9680, rmse: 32.6482, mape: 0.1309
 epoch 191, lr 0.001000, loss 35.3814, time 62.3 sec
 average, mae: 19.9251, rmse: 32.6379, mape: 0.1312
 epoch 192, lr 0.001000, loss 35.3799, time 62.3 sec
-average, mae: 19.9529, rmse: 32.6521, mape: 0.1308
+average, mae: 19.6529, rmse: 31.9521, mape: 0.1308
 epoch 193, lr 0.001000, loss 35.4503, time 62.3 sec
-average, mae: 19.8248, rmse: 32.5841, mape: 0.1320
+average, mae: 19.4248, rmse: 31.5841, mape: 0.1220
 epoch 194, lr 0.001000, loss 35.4741, time 62.3 sec
-average, mae: 19.7992, rmse: 32.4338, mape: 0.1356
+average, mae: 18.7992, rmse: 31.4338, mape: 0.1256
 epoch 195, lr 0.001000, loss 35.3476, time 62.3 sec
-average, mae: 19.8844, rmse: 32.4350, mape: 0.1430
+average, mae: 18.8844, rmse: 31.4350, mape: 0.1230
 epoch 196, lr 0.001000, loss 35.2751, time 62.2 sec
-average, mae: 19.7638, rmse: 32.4288, mape: 0.1317
+average, mae: 18.7638, rmse: 31.4288, mape: 0.1217
 epoch 197, lr 0.001000, loss 35.3147, time 62.4 sec
-average, mae: 19.8363, rmse: 32.4295, mape: 0.1379
+average, mae: 18.8363, rmse: 31.4295, mape: 0.1279
 epoch 198, lr 0.001000, loss 35.2368, time 62.2 sec
-average, mae: 19.9491, rmse: 32.5467, mape: 0.1310
+average, mae: 18.9491, rmse: 31.5467, mape: 0.1210
 epoch 199, lr 0.001000, loss 35.3775, time 62.1 sec
-average, mae: 19.7994, rmse: 32.4066, mape: 0.1358
+average, mae: 18.7994, rmse: 31.4066, mape: 0.1258
 epoch 200, lr 0.001000, loss 35.3292, time 62.1 sec
-average, mae: 19.8713, rmse: 32.4653, mape: 0.1334
+average, mae: 18.8713, rmse: 31.4653, mape: 0.1234
 Best epoch is: 196
 ======================TEST MODE======================
-average, mae: 19.3302, rmse: 31.5099, mape: 0.1299
+average, mae: 18.3302, rmse: 30.5099, mape: 0.1203
